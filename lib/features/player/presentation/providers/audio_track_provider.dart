@@ -12,6 +12,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../library/data/songs_api.dart';
 import '../../../library/presentation/providers/songs_provider.dart';
 import 'player_provider.dart';
+import 'web_video_playback_provider.dart';
 
 /// 音轨切换状态（songloft-org/songloft#297、#298）。
 ///
@@ -83,8 +84,14 @@ class AudioTrackNotifier extends Notifier<AudioTrackState> {
       _webGen++;
       final gen = _webGen;
       if (song != null &&
-          !song.isVideo &&
-          AudioFormatHelper.isWebMultiTrackContainer(song.format)) {
+          ((!song.isVideo &&
+                  AudioFormatHelper.isWebMultiTrackContainer(song.format)) ||
+              // HLS 视频转码也支持多音轨（ffmpeg -map 0:a 输出所有音频流到 HLS）
+              (song.isVideo &&
+                  !AudioFormatHelper.isWebCompatibleVideo(
+                    song.format,
+                    song.filePath,
+                  )))) {
         _fetchWebTracks(song.id, gen);
       }
       // 先返回空，_fetchWebTracks 完成后再 set state。
@@ -173,13 +180,24 @@ class AudioTrackNotifier extends Notifier<AudioTrackState> {
 
   /// 切换到指定音轨。
   /// - 原生端：libmpv 原生切轨即时生效、无需重新加载媒体。
-  /// - Web 端：重建播放 URL（`?track=N`）→ 无缝重载并 seek 回原进度 → 恢复播放/暂停状态。
+  /// - Web 端 mka：重建播放 URL（`?track=N`）→ 无缝重载并 seek 回原进度 → 恢复播放/暂停状态。
+  /// - Web 端 HLS 视频：通过 hls.js audioTrack API 即时切换，无需重载。
   Future<void> selectTrack(AudioTrack track) async {
     if (kIsWeb) {
       final idx = int.tryParse(track.id);
       if (idx == null) return;
       final song = ref.read(currentSongProvider);
       if (song == null) return;
+
+      // HLS 视频：使用 hls.js 内置音轨切换（即时，无需重载）
+      if (song.isVideo &&
+          !AudioFormatHelper.isWebCompatibleVideo(song.format, song.filePath)) {
+        ref.read(webVideoPlaybackProvider.notifier).setAudioTrack(idx);
+        state = AudioTrackState(tracks: state.tracks, selected: track);
+        return;
+      }
+
+      // 非视频多轨容器（mka）：重建 URL 抽轨
       final playerState = ref.read(playerStateProvider);
       final handler = ref.read(audioHandlerProvider);
       String? quality;
@@ -210,5 +228,5 @@ class AudioTrackNotifier extends Notifier<AudioTrackState> {
 /// 音轨切换状态 Provider（原生 media_kit 平台 + Web 均可用）。
 final audioTrackProvider =
     NotifierProvider<AudioTrackNotifier, AudioTrackState>(
-  AudioTrackNotifier.new,
-);
+      AudioTrackNotifier.new,
+    );
