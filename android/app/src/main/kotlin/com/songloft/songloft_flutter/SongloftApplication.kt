@@ -1,7 +1,6 @@
 package com.songloft.songloft_flutter
 
 import android.app.Application
-import io.flutter.plugin.common.MethodChannel
 
 /**
  * 自定义 Application：在进程最早期（早于任何 gomobile `mobile.*` 类被触碰、早于
@@ -16,11 +15,6 @@ import io.flutter.plugin.common.MethodChannel
  * 的默认解析），这里直接继承它并只加一个预加载钩子，不改变其余默认行为。
  */
 class SongloftApplication : Application() {
-    companion object {
-        /// 桌面小组件动作桥接通道，由 WidgetActionPlugin 初始化
-        var widgetActionChannel: MethodChannel? = null
-    }
-
     override fun onCreate() {
         super.onCreate()
         BackendPatchManager.preloadIfStaged(this)

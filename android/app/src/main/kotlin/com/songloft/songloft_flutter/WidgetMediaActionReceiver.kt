@@ -27,7 +27,7 @@ class WidgetMediaActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
         if (action == ACTION_FAVORITE) {
-            SongloftApplication.widgetActionChannel?.invokeMethod("onWidgetAction", "favorite")
+            SongloftNowPlayingWidgetProvider.widgetActionChannel?.invokeMethod("onWidgetAction", "favorite")
             return
         }
         val keyCode = when (action) {

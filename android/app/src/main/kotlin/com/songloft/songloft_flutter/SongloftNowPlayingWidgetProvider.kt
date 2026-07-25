@@ -10,6 +10,7 @@ import android.view.View
 import android.widget.RemoteViews
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.AppWidgetTarget
+import io.flutter.plugin.common.MethodChannel
 
 class SongloftNowPlayingWidgetProvider : AppWidgetProvider() {
 
@@ -18,6 +19,8 @@ class SongloftNowPlayingWidgetProvider : AppWidgetProvider() {
         const val ACTION_PREV = "com.songloft.songloft_flutter.ACTION_PREV"
         const val ACTION_NEXT = "com.songloft.songloft_flutter.ACTION_NEXT"
         const val ACTION_FAVORITE = "com.songloft.songloft_flutter.ACTION_FAVORITE"
+
+        var widgetActionChannel: MethodChannel? = null
 
         private var lastArtUrl: String = ""
         private var cachedPendingIntents: MutableMap<String, PendingIntent> = mutableMapOf()

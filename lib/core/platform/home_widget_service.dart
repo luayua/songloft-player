@@ -6,6 +6,8 @@ import 'package:home_widget/home_widget.dart';
 
 typedef PositionProvider = Duration Function();
 
+typedef DurationProvider = Duration Function();
+
 class HomeWidgetService {
   static final HomeWidgetService _instance = HomeWidgetService._();
   factory HomeWidgetService() => _instance;
@@ -95,15 +97,16 @@ class HomeWidgetService {
 
   void startProgressUpdates({
     required PositionProvider currentPosition,
-    required Duration currentDuration,
+    required DurationProvider currentDuration,
   }) {
     if (!_isApplicable) return;
     stopProgressUpdates();
     _progressTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       try {
         final pos = currentPosition();
+        final dur = currentDuration();
         await HomeWidget.saveWidgetData(_keyPosition, pos.inMilliseconds);
-        await HomeWidget.saveWidgetData(_keyDuration, currentDuration.inMilliseconds);
+        await HomeWidget.saveWidgetData(_keyDuration, dur.inMilliseconds);
         await _triggerUpdate();
       } catch (e) {
         debugPrint('[HomeWidget] progress update failed: $e');

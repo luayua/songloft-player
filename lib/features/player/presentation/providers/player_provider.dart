@@ -303,7 +303,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
         if (playerState.playing) {
           HomeWidgetService().startProgressUpdates(
             currentPosition: () => _audioHandler.playbackState.value.position,
-            currentDuration: _audioHandler.mediaItem.value?.duration ?? Duration.zero,
+            currentDuration: () => _audioHandler.mediaItem.value?.duration ?? Duration.zero,
           );
         } else {
           HomeWidgetService().stopProgressUpdates();
@@ -385,8 +385,6 @@ class PlayerNotifier extends Notifier<PlayerState> {
     final isFav = isRadio
         ? favState.favoriteRadioIds.contains(song.id)
         : favState.favoriteSongIds.contains(song.id);
-    final pos = _audioHandler.playbackState.value.position;
-    final dur = _audioHandler.mediaItem.value?.duration ?? Duration.zero;
     widget.updateNowPlaying(
       title: song.title,
       artist: song.artist ?? '',
@@ -395,13 +393,13 @@ class PlayerNotifier extends Notifier<PlayerState> {
           : null,
       isPlaying: state.isPlaying,
       isFavorite: isFav,
-      position: pos,
-      duration: dur,
+      position: Duration.zero,
+      duration: Duration(milliseconds: (song.duration * 1000).toInt()),
     );
     if (state.isPlaying) {
       widget.startProgressUpdates(
         currentPosition: () => _audioHandler.playbackState.value.position,
-        currentDuration: _audioHandler.mediaItem.value?.duration ?? Duration.zero,
+        currentDuration: () => _audioHandler.mediaItem.value?.duration ?? Duration.zero,
       );
     } else {
       widget.stopProgressUpdates();
