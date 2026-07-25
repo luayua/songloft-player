@@ -12,6 +12,7 @@ import com.ryanheise.audioservice.AudioServiceActivity
 class MainActivity : AudioServiceActivity() {
     companion object {
         private const val CHANNEL = "com.songloft/tv_detector"
+        private const val WIDGET_CHANNEL = "com.songloft/widget_action"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,10 +32,12 @@ class MainActivity : AudioServiceActivity() {
             }
         }
 
-        // 注册内嵌后端 MethodChannel（反射调用 .aar，未打包时自动降级）
+        SongloftApplication.widgetActionChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL
+        )
+
         SongloftBackendPlugin(applicationContext, flutterEngine)
 
-        // 悬浮歌词窗口（songloft-org/songloft#318）
         FloatingLyricPlugin(applicationContext, flutterEngine)
     }
 }
