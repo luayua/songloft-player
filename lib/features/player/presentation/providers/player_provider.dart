@@ -24,6 +24,7 @@ import '../../../../main.dart';
 import '../../../../shared/models/song.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../library/data/songs_api.dart';
+import '../../../library/presentation/providers/favorite_provider.dart';
 import '../../../library/presentation/providers/songs_provider.dart';
 import '../../../playlist/data/playlist_api.dart';
 import '../../../playlist/presentation/providers/playlist_provider.dart';
@@ -89,6 +90,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     _audioHandler.onSkipToNext = () => playNext();
     _audioHandler.onSkipToPrevious = () => playPrev();
     _audioHandler.onSongCompleted = _onSongCompleted;
+    _audioHandler.onToggleFavorite = _toggleFavoriteFromNotification;
 
     // 切歌前主动通知后端 cancel 旧 song 的进行中工作（issue #79）。
     // fire-and-forget：不阻塞 setAudioSource，失败也不影响播放主路径。
@@ -310,6 +312,11 @@ class PlayerNotifier extends Notifier<PlayerState> {
         }
       });
     }
+
+    // 监听收藏状态变化，同步通知栏图标
+    ref.listen(favoriteProvider, (_, _) {
+      _updateNotificationFavorite();
+    });
   }
 
   /// 初始化 Live Activity 服务
@@ -479,6 +486,39 @@ class PlayerNotifier extends Notifier<PlayerState> {
         _savePlaybackState();
       }
     }
+  }
+
+  void _toggleFavoriteFromNotification() {
+    final song = state.currentSong;
+    if (song == null) return;
+    debugPrint('[Player] Toggle favorite from notification: ${song.id}');
+    unawaited(_toggleSongFavorite(song.id, song.type));
+  }
+
+  Future<void> _toggleSongFavorite(int songId, String songType) async {
+    try {
+      final notifier = ref.read(favoriteProvider.notifier);
+      final isRadio = songType == 'radio';
+      if (isRadio) {
+        await notifier.toggleRadioFavorite(songId);
+      } else {
+        await notifier.toggleFavorite(songId);
+      }
+      _updateNotificationFavorite();
+    } catch (e) {
+      debugPrint('[Player] Toggle favorite failed: $e');
+    }
+  }
+
+  void _updateNotificationFavorite() {
+    final song = state.currentSong;
+    if (song == null) return;
+    final favState = ref.read(favoriteProvider);
+    final isRadio = song.type == 'radio';
+    final isFav = isRadio
+        ? favState.favoriteRadioIds.contains(song.id)
+        : favState.favoriteSongIds.contains(song.id);
+    _audioHandler.setFavorited(isFav);
   }
 
   /// 播放歌单
@@ -1555,6 +1595,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
       currentSong: state.playlist[index],
       currentTime: Duration.zero,
     );
+    _updateNotificationFavorite();
 
     await _playCurrent(gen);
     if (gen != _playGeneration) return; // 已被新切歌取代，savePlaybackState 也跳过
